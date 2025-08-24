@@ -66,6 +66,7 @@ const TableExample: React.FC<{
           { value: "Marketing", label: "Marketing" },
           { value: "Finance", label: "Finance" },
           { value: "Support", label: "Support" },
+          { value: "Operations", label: "Operations" },
         ],
         sortable: true,
         filtering: {
