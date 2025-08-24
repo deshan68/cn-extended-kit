@@ -15,6 +15,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  VisibilityState,
   type ColumnDef,
   type ColumnFiltersState,
   type PaginationState,
@@ -51,6 +52,7 @@ import {
   MultiSelectCell,
   DateCell,
 } from "@/components/config-table/components";
+import { ConfigTableColumnHider } from "./config-table-column-hider";
 
 export interface ConfigurableTableProps<TData> {
   config: TableConfig<TData>;
@@ -61,7 +63,12 @@ const ConfigurableTable = <TData,>({
 }: ConfigurableTableProps<TData>) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(config.pagination?.pageSize || 10);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(
+    config.sorting?.initialState || []
+  );
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    config.columnVisibility?.initialState || {}
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [editingCell, setEditingCell] = useState<{
@@ -393,6 +400,21 @@ const ConfigurableTable = <TData,>({
     [config.filtering]
   );
 
+  const onColumnVisibilityChange = useCallback(
+    (updaterOrValue: Updater<VisibilityState>) => {
+      const newColumnVisibility =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(columnVisibility)
+          : updaterOrValue;
+
+      if (config.columnVisibility?.onColumnVisibilityChange) {
+        config.columnVisibility.onColumnVisibilityChange(newColumnVisibility);
+      }
+      setColumnVisibility(newColumnVisibility);
+    },
+    [columnVisibility, config.columnVisibility]
+  );
+
   // Create columns based on configuration
   const columns = useMemo<ColumnDef<TData>[]>(() => {
     const selectionColumn: ColumnDef<TData> = {
@@ -435,6 +457,8 @@ const ConfigurableTable = <TData,>({
       enableColumnFilter:
         (config.filtering?.enabled && colConfig.filtering?.enabled) || false,
       enableSorting: (config.sorting?.enabled && colConfig.sortable) || false,
+      enableHiding:
+        (config.columnVisibility?.enabled && colConfig.hideable) || false,
       header: ({ column }) => (
         <ConfigTableColumnHeader column={column} columnConfig={colConfig} />
       ),
@@ -490,6 +514,7 @@ const ConfigurableTable = <TData,>({
 
     return [selectionColumn, ...dataColumns];
   }, [
+    config.columnVisibility?.enabled,
     config.columns,
     config.editing?.enabled,
     config.filtering?.enabled,
@@ -513,6 +538,7 @@ const ConfigurableTable = <TData,>({
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
     onSortingChange: onColumnSortingChange,
     onColumnFiltersChange: onColumnFiltersChange,
+    onColumnVisibilityChange: onColumnVisibilityChange,
     onPaginationChange: onPaginationChange,
     onGlobalFilterChange: setGlobalFilter,
     state: {
@@ -520,6 +546,7 @@ const ConfigurableTable = <TData,>({
       columnFilters,
       globalFilter,
       pagination,
+      columnVisibility,
     },
     manualPagination: config.pagination?.enabled || false,
     manualSorting: config.sorting?.enabled || false,
@@ -599,6 +626,9 @@ const ConfigurableTable = <TData,>({
 
       {/* Table */}
       <div className="rounded-md border">
+        <div className="flex items-center justify-end p-4">
+          <ConfigTableColumnHider table={table} />
+        </div>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -6,6 +6,7 @@ import { ConfigTableNumberFilter } from "@/components/config-table/components/co
 import { ConfigTableSelectFilter } from "@/components/config-table/components/config-table-select-filter";
 import { ConfigTableTextFilter } from "@/components/config-table/components/config-table-text-filter";
 import { TextCell } from "@/components/config-table/components/cell-text";
+import { ConfigTableColumnHider } from "@/components/config-table/components/config-table-column-hider";
 import { NumberCell } from "@/components/config-table/components/cell-number";
 import { BooleanCell } from "@/components/config-table/components/cell-boolean";
 import { SingleSelectCell } from "@/components/config-table/components/cell-single-select";
@@ -25,5 +26,6 @@ export {
   BooleanCell,
   SingleSelectCell,
   MultiSelectCell,
-  DateCell
+  DateCell,
+  ConfigTableColumnHider,
 };

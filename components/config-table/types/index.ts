@@ -2,6 +2,7 @@ import type {
   ColumnFiltersState,
   PaginationState,
   SortingState,
+  VisibilityState,
 } from "@tanstack/react-table";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -19,6 +20,7 @@ export interface ColumnConfig<TData, TKey extends keyof TData = keyof TData> {
   type: "text" | "select" | "multiselect" | "number" | "boolean" | "date";
   width?: number;
   sortable?: boolean;
+  hideable?: boolean;
   filtering?: {
     enabled: boolean;
     filterType?: "text" | "number" | "select" | "date";
@@ -52,6 +54,7 @@ export interface TableConfig<TData> {
 
   sorting?: {
     enabled: boolean;
+    initialState?: SortingState;
     onColumnSortingChange?: (value: SortingState) => void;
   };
 
@@ -60,6 +63,12 @@ export interface TableConfig<TData> {
     globalSearch?: boolean;
     onGlobalFilterChange?: (value: string) => void;
     onColumnFilterChange?: (value: ColumnFiltersState) => void;
+  };
+
+  columnVisibility?: {
+    enabled: boolean;
+    initialState?: VisibilityState;
+    onColumnVisibilityChange?: (value: VisibilityState) => void;
   };
 
   editing?: {

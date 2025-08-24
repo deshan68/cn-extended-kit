@@ -1,5 +1,5 @@
 import type { TableConfig } from "@/components/config-table/types";
-import ConfigurableTable from "../config-table/components/config-table";
+import ConfigurableTable from "@/components/config-table/components/config-table";
 
 export interface TestEmployee {
   id: number;
@@ -35,6 +35,7 @@ const TableExample: React.FC<{
           enabled: true,
           filterType: "text",
         },
+        hideable: true,
         editable: true,
         placeholder: "Search names...",
         width: 60,
@@ -53,6 +54,7 @@ const TableExample: React.FC<{
           filterType: "text",
         },
         editable: true,
+        hideable: true,
         placeholder: "Search emails...",
         width: 60,
         validation: {
@@ -87,6 +89,7 @@ const TableExample: React.FC<{
           ],
         },
         editable: true,
+        hideable: true,
         placeholder: "Search departments...",
         width: 60,
       },
@@ -115,6 +118,7 @@ const TableExample: React.FC<{
           ],
         },
         editable: true,
+        hideable: true,
         placeholder: "Select skills...",
         width: 100,
       },
@@ -163,7 +167,7 @@ const TableExample: React.FC<{
         },
       },
       {
-        id: "performance_rating",
+        id: "performance rating",
         header: "Rating",
         accessorKey: "performance_rating",
         type: "number",
@@ -177,7 +181,7 @@ const TableExample: React.FC<{
         },
       },
       {
-        id: "join_date",
+        id: "join date",
         header: "Join Date",
         accessorKey: "join_date",
         type: "date",
@@ -199,8 +203,19 @@ const TableExample: React.FC<{
     },
     sorting: {
       enabled: true,
+      initialState: [{ id: "name", desc: false }],
       onColumnSortingChange: (value) => {
         console.log("From parent -> Column sorting changed:", value);
+      },
+    },
+    columnVisibility: {
+      enabled: true,
+      initialState: {
+        skills: false,
+        address: false,
+      },
+      onColumnVisibilityChange: (value) => {
+        console.log("From Parent -> Column visibility changed:", value);
       },
     },
     filtering: {
