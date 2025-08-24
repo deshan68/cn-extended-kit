@@ -1,0 +1,82 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "appri-ai registry",
+  "homepage": "",
+  "items": [
+    {
+      "name": "config-table",
+      "description": "A table component for displaying and editing configuration settings.",
+      "type": "registry:component",
+      "dependencies": ["@tanstack/react-table"],
+      "registryDependencies": [
+        "table",
+        "button",
+        "select",
+        "dropdown-menu",
+        "skeleton",
+        "badge",
+        "calendar",
+        "checkbox",
+        "popover",
+        "command"
+      ],
+      "files": [
+        {
+          "path": "registry/new-york/items/config-table/types/index.ts",
+          "type": "registry:file",
+          "target": "components/config-table/types/index.ts"
+        },
+        {
+          "path": "registry/new-york/items/config-table/lib/index.ts",
+          "type": "registry:lib",
+          "target": "components/config-table/lib/index.ts"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table.tsx",
+          "type": "registry:ui",
+          "target": "components/config-table/components/config-table.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-column-header.tsx",
+          "type": "registry:component",
+          "target": "components/config-table/components/config-table-column-header.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-date-filter.tsx",
+          "type": "registry:component",
+          "target": "components/config-table/components/config-table-date-filter.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-filter-button.tsx",
+          "type": "registry:component",
+          "target": "components/config-table/components/config-table-filter-button.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-inline-editor.tsx",
+          "type": "registry:ui",
+          "target": "components/config-table/components/config-table-inline-editor.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-number-filter.tsx",
+          "type": "registry:ui",
+          "target": "components/config-table/components/config-table-number-filter.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-select-filter.tsx",
+          "type": "registry:ui",
+          "target": "components/config-table/components/config-table-select-filter.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/config-table-text-filter.tsx",
+          "type": "registry:ui",
+          "target": "components/config-table/components/config-table-text-filter.tsx"
+        },
+        {
+          "path": "registry/new-york/items/config-table/components/index.ts",
+          "type": "registry:file",
+          "target": "components/config-table/components/index.ts"
+        }
+      ]
+    }
+  ]
+}
