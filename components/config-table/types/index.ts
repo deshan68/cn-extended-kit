@@ -3,13 +3,14 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import type { TableAPI } from "@/components/config-table/lib";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SelectOption {
   label: string;
   value: string;
 }
+
+export type CellData = string | string[] | number | boolean;
 
 export interface ColumnConfig<TData, TKey extends keyof TData = keyof TData> {
   id: string;
@@ -63,7 +64,6 @@ export interface TableConfig<TData> {
 
   editing?: {
     enabled: boolean;
-    apiBaseUrl?: string;
     idField: keyof TData;
 
     rowCreating?: {
@@ -72,58 +72,30 @@ export interface TableConfig<TData> {
       defaultValues?: Partial<TData>;
       autoSave?: boolean;
       autoSaveDelay?: number;
-      customCreateHandler?: (
-        newRowData: TData,
-        tableAPI: TableAPI<TData>
-      ) => Promise<boolean>;
+      customCreateHandler?: (newRowData: TData) => Promise<boolean>;
       onRowCreated?: (newRow: TData, response: any) => void;
       onCreateError?: (error: any, rowData: TData) => void;
     };
 
     columnUpdating?: {
-      customUpdateHandler?: (
-        rowData: TData,
-        columnId: keyof TData,
-        newValue: any,
-        oldValue: any,
-        tableAPI: TableAPI<TData>
-      ) => Promise<boolean>;
-
-      relatedUpdates?: Array<{
-        condition: (
-          columnId: keyof TData,
-          newValue: any,
-          rowData: TData
-        ) => boolean;
-        endpoint: string;
-        method: "POST" | "PATCH" | "PUT" | "DELETE";
-        body: (rowData: TData, columnId: keyof TData, newValue: any) => any;
-        headers?: Record<string, string>;
-      }>;
-
-      columnEndpoints?: Partial<
-        Record<
-          keyof TData,
-          {
-            endpoint: string;
-            method: "POST" | "PATCH" | "PUT" | "DELETE";
-            body: (rowData: TData, newValue: any, oldValue: any) => any;
-            headers?: Record<string, string>;
-          }
-        >
-      >;
-
       beforeUpdate?: (
         rowData: TData,
         columnId: keyof TData,
         newValue: any
       ) => Promise<boolean> | boolean;
 
+      coreUpdate?: (
+        rowData: TData,
+        columnId: keyof TData,
+        newValue: CellData,
+        oldValue: CellData
+      ) => Promise<boolean>;
+
       afterUpdate?: (
         rowData: TData,
         columnId: keyof TData,
-        newValue: any,
-        response: any
+        newValue: CellData,
+        response: TData[]
       ) => Promise<void> | void;
     };
 

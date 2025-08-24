@@ -31,7 +31,7 @@ import {
   Edit,
   Plus,
 } from "lucide-react";
-import type { TableConfig } from "@/components/config-table/types";
+import type { CellData, TableConfig } from "@/components/config-table/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +42,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableAPI } from "@/components/config-table/lib";
 import {
   ConfigTableColumnHeader,
   TextCell,
@@ -79,14 +78,6 @@ const ConfigurableTable = <TData,>({
       pageSize: perPage,
     };
   }, [page, perPage]);
-
-  const tableAPI = useMemo(() => {
-    return new TableAPI(
-      config.tableKey,
-      config.editing?.apiBaseUrl || "/api",
-      config.editing?.idField
-    );
-  }, [config.tableKey, config.editing?.apiBaseUrl, config.editing?.idField]);
 
   const handleCellEdit = useCallback((rowIndex: number, columnId: string) => {
     setEditingCell({ rowIndex, columnId });
@@ -134,11 +125,8 @@ const ConfigurableTable = <TData,>({
         // Use custom create handler if provided
         if (config.editing?.rowCreating?.customCreateHandler) {
           response = await config.editing.rowCreating.customCreateHandler(
-            cleanRowData,
-            tableAPI
+            cleanRowData
           );
-        } else {
-          response = await tableAPI.createRow(cleanRowData);
         }
 
         // Update the row with the response (including new ID)
@@ -181,12 +169,7 @@ const ConfigurableTable = <TData,>({
         }
       }
     },
-    [
-      config.editing?.rowCreating,
-      config.columns,
-      checkRowReadyForCreation,
-      tableAPI,
-    ]
+    [config.editing?.rowCreating, config.columns, checkRowReadyForCreation]
   );
 
   // Enhanced cell save handler with complex API scenarios
@@ -197,7 +180,7 @@ const ConfigurableTable = <TData,>({
       newValue: string | string[] | number | boolean
     ) => {
       const rowData = tableData[rowIndex] as CreatableRow;
-      const oldValue = rowData[columnId];
+      const oldValue = rowData[columnId] as CellData;
       const isNewRow = rowData.__isNew ? true : false;
 
       // Skip if value hasn't changed
@@ -251,58 +234,18 @@ const ConfigurableTable = <TData,>({
           }
 
           // Handle API updates for existing rows (previous complex logic)
-          const updateResults = [];
+          const updateResults: TData[] = [];
 
           // Custom update handler
-          if (config.editing?.columnUpdating?.customUpdateHandler) {
-            const success =
-              await config.editing.columnUpdating.customUpdateHandler(
-                rowData,
-                columnId,
-                newValue,
-                oldValue,
-                tableAPI
-              );
+          if (config.editing?.columnUpdating?.coreUpdate) {
+            const success = await config.editing.columnUpdating.coreUpdate(
+              rowData,
+              columnId,
+              newValue,
+              oldValue
+            );
             if (!success) {
               throw new Error("Custom update handler failed");
-            }
-          }
-          // Column-specific endpoints
-          else if (
-            config.editing?.columnUpdating?.columnEndpoints?.[columnId]
-          ) {
-            const columnConfig =
-              config.editing.columnUpdating.columnEndpoints[columnId];
-            const body = columnConfig.body(rowData, newValue, oldValue);
-
-            const result = await tableAPI.updateWithCustomEndpoint(
-              columnConfig.endpoint,
-              columnConfig.method,
-              body,
-              columnConfig.headers
-            );
-            updateResults.push(result);
-          }
-          // Standard update
-          else if (config.editing?.enabled) {
-            await tableAPI.updateCell(rowData, columnId, newValue);
-          }
-
-          // Handle related updates
-          if (config.editing?.columnUpdating?.relatedUpdates) {
-            for (const relatedUpdate of config.editing.columnUpdating
-              .relatedUpdates) {
-              if (relatedUpdate.condition(columnId, newValue, rowData)) {
-                const body = relatedUpdate.body(rowData, columnId, newValue);
-
-                const result = await tableAPI.updateWithCustomEndpoint(
-                  relatedUpdate.endpoint,
-                  relatedUpdate.method,
-                  body,
-                  relatedUpdate.headers
-                );
-                updateResults.push(result);
-              }
             }
           }
 
@@ -357,7 +300,7 @@ const ConfigurableTable = <TData,>({
         setIsLoading(false);
       }
     },
-    [tableData, handleAutoSave, config.editing, tableAPI]
+    [tableData, handleAutoSave, config.editing]
   );
 
   const handleCellCancel = useCallback(() => {
@@ -496,7 +439,6 @@ const ConfigurableTable = <TData,>({
         <ConfigTableColumnHeader column={column} columnConfig={colConfig} />
       ),
       cell: ({ getValue, row }) => {
-        type CellData = string | string[] | number | boolean;
         const value = getValue() as CellData;
         const rowIndex = row.index;
         const isEditing =
@@ -593,9 +535,6 @@ const ConfigurableTable = <TData,>({
             <div className="flex items-center space-x-2 text-gray-700">
               <span className="text-sm font-medium">
                 Table: {config.tableKey}
-              </span>
-              <span className="text-xs text-gray-500">
-                API: {config.editing?.apiBaseUrl || "/api"}/{config.tableKey}
               </span>
             </div>
             {isLoading && (

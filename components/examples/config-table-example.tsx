@@ -9,6 +9,7 @@ export interface TestEmployee {
   age: number;
   email: string;
   department: string;
+  skills: string[];
   address: string;
   performance_rating: number;
 }
@@ -16,9 +17,13 @@ export interface TestEmployee {
 const TableExample: React.FC<{
   data: TestEmployee[];
 }> = ({ data }) => {
+  const newData: TestEmployee[] = data.map((item) => ({
+    ...item,
+    skills: ["React"],
+  }));
   const tableConfig: TableConfig<TestEmployee> = {
     tableKey: "test_employee",
-    data: data,
+    data: newData,
     columns: [
       {
         id: "name",
@@ -84,6 +89,34 @@ const TableExample: React.FC<{
         editable: true,
         placeholder: "Search departments...",
         width: 60,
+      },
+      {
+        id: "skills",
+        header: "Skills",
+        accessorKey: "skills",
+        type: "multiselect",
+        options: [
+          { value: "JavaScript", label: "JavaScript" },
+          { value: "TypeScript", label: "TypeScript" },
+          { value: "React", label: "React" },
+          { value: "Node.js", label: "Node.js" },
+          { value: "Python", label: "Python" },
+        ],
+        sortable: true,
+        filtering: {
+          enabled: true,
+          filterType: "select",
+          filterOptions: [
+            { value: "JavaScript", label: "JavaScript" },
+            { value: "TypeScript", label: "TypeScript" },
+            { value: "React", label: "React" },
+            { value: "Node.js", label: "Node.js" },
+            { value: "Python", label: "Python" },
+          ],
+        },
+        editable: true,
+        placeholder: "Select skills...",
+        width: 100,
       },
       {
         id: "age",
@@ -182,7 +215,6 @@ const TableExample: React.FC<{
     },
     editing: {
       enabled: true,
-      apiBaseUrl: "https://dev-pg-rest-clone-test.lvx5rv.easypanel.host",
       idField: "id",
       rowCreating: {
         enabled: true,
@@ -196,25 +228,19 @@ const TableExample: React.FC<{
       },
 
       columnUpdating: {
-        customUpdateHandler: async (
-          rowData,
-          columnId,
-          newValue,
-          oldValue,
-          tableAPI
-        ) => {
-          console.log("Custom update handler called:", {
-            columnId,
-            newValue,
-            oldValue,
-          });
-          await tableAPI.updateCell(rowData, columnId, newValue);
+        beforeUpdate: async (rowData, columnId, newValue) => {
+          console.log("Before update:", { columnId, newValue, rowData });
 
           return true;
         },
 
-        beforeUpdate: async (rowData, columnId, newValue) => {
-          console.log("Before update:", { columnId, newValue, rowData });
+        coreUpdate: async (rowData, columnId, newValue, oldValue) => {
+          console.log("Core update handler called:", {
+            columnId,
+            newValue,
+            oldValue,
+            rowData,
+          });
 
           return true;
         },
