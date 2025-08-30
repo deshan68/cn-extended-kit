@@ -1,7 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import { Kanban, SquareLibrary, Table } from "lucide-react";
+import { Calendar, Kanban, SquareLibrary, Table } from "lucide-react";
 
 import {
   Sidebar,
@@ -26,6 +26,11 @@ const data = {
       name: "Kanban View",
       url: "/registry/kanban-view",
       icon: Kanban,
+    },
+    {
+      name: "Calendar",
+      url: "/registry/app-calendar",
+      icon: Calendar,
     },
   ],
 };

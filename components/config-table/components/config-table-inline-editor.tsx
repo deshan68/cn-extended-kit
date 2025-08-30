@@ -209,10 +209,14 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
           <SelectTrigger
             className={`w-full ${error ? "border-red-500" : "border-blue-500"}`}
           >
-            <SelectValue placeholder="Select..." />
+            <SelectValue placeholder="Select...">
+              {
+                options?.find((opt) => opt.label === editValue.toString())
+                  ?.label
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">None</SelectItem>
             {options?.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
