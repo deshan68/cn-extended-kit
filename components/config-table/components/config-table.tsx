@@ -1,19 +1,14 @@
-import { SelectTrigger } from "@radix-ui/react-select";
+import { useCallback, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
   flexRender,
   getCoreRowModel,
-  getFacetedMinMaxValues,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
   VisibilityState,
   type ColumnDef,
@@ -22,17 +17,20 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Edit,
   Plus,
+  X,
 } from "lucide-react";
-import type { CellData, TableConfig } from "@/components/config-table/types";
+import type {
+  CellData,
+  MetaCellData,
+  TableConfig,
+} from "@/components/config-table/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,33 +49,59 @@ import {
   SingleSelectCell,
   MultiSelectCell,
   DateCell,
+  AutoCompleteCell,
+  CellIconButtons,
+  ConfigTableColumnHider,
 } from "@/components/config-table/components";
-import { ConfigTableColumnHider } from "./config-table-column-hider";
+import {
+  PAGE_INDEX,
+  PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+} from "@/components/config-table/lib";
 
-export interface ConfigurableTableProps<TData> {
+export interface ConfigurableTableProps<
+  TData extends {
+    id: string;
+    __isDummy?: boolean;
+  }
+> {
   config: TableConfig<TData>;
+  isFetching: boolean;
 }
 
-const ConfigurableTable = <TData,>({
+const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
   config,
+  isFetching,
 }: ConfigurableTableProps<TData>) => {
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(config.pagination?.pageSize || 10);
+  const pageSizeOptions =
+    config.pagination?.pageSizeOptions || PAGE_SIZE_OPTIONS;
+  const [tableData, setTableData] = useState(config.data);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [editingCell, setEditingCell] = useState<{
+    rowIndex: number;
+    columnId: string;
+  } | null>(null);
+  const [page, setPage] = useState(
+    config.pagination?.initialState?.pageIndex || PAGE_INDEX
+  );
+  const [perPage, setPerPage] = useState(
+    config.pagination?.initialState?.pageSize || PAGE_SIZE
+  );
   const [sorting, setSorting] = useState<SortingState>(
     config.sorting?.initialState || []
   );
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     config.columnVisibility?.initialState || {}
   );
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [editingCell, setEditingCell] = useState<{
-    rowIndex: number;
-    columnId: string;
-  } | null>(null);
-  const [tableData, setTableData] = useState(config.data);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
+    config.filtering?.initialState || []
+  );
+
+  useMemo(() => {
+    setTableData(config.data);
+  }, [config]);
 
   const pagination: PaginationState = useMemo(() => {
     return {
@@ -88,7 +112,6 @@ const ConfigurableTable = <TData,>({
 
   const handleCellEdit = useCallback((rowIndex: number, columnId: string) => {
     setEditingCell({ rowIndex, columnId });
-    // Clear any existing error for this cell
     setApiErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors[`${rowIndex}-${columnId}`];
@@ -107,48 +130,48 @@ const ConfigurableTable = <TData,>({
     [config.editing?.rowCreating?.requiredFields]
   );
 
-  type CreatableRow = {
-    __isNew?: boolean;
-    __tempId?: string;
-  } & TData;
-
   const handleAutoSave = useCallback(
-    async (rowIndex: number, rowData: CreatableRow) => {
+    async (
+      rowIndex: number,
+      mutationKey: keyof TData,
+      newValue: MetaCellData,
+      rowData: TData
+    ) => {
       if (!config.editing?.rowCreating?.autoSave) return;
       if (!checkRowReadyForCreation(rowData)) return;
 
-      const cleanRowData = { ...rowData };
-      delete cleanRowData.__isNew;
-      delete cleanRowData.__tempId;
-
       try {
-        // Remove internal fields before sending to API
-        const cleanRowData = { ...rowData };
-        delete cleanRowData.__isNew;
-        delete cleanRowData.__tempId;
+        const TemporaryUpdatedValue = {
+          ...rowData,
+          [mutationKey]: newValue.value,
+        };
 
-        let response;
+        if (config.editing?.rowCreating.beforeCreate) {
+          const shouldContinue = await config.editing.rowCreating.beforeCreate({
+            columnId: mutationKey,
+            newValue: newValue,
+            newRow: TemporaryUpdatedValue,
+          });
 
-        // Use custom create handler if provided
-        if (config.editing?.rowCreating?.customCreateHandler) {
-          response = await config.editing.rowCreating.customCreateHandler(
-            cleanRowData
-          );
+          if (!shouldContinue) return;
         }
 
-        // Update the row with the response (including new ID)
-        if (!Array.isArray(response))
-          throw new Error("Unexpected response format from POST");
+        let response;
+        if (config.editing?.rowCreating?.coreCreate) {
+          setIsLoading(true);
+          response = await config.editing.rowCreating.coreCreate({
+            columnId: mutationKey,
+            newValue: newValue,
+            newRow: TemporaryUpdatedValue,
+          });
 
-        const updatedRow = { ...cleanRowData, ...response[0] };
+          if (!response) {
+            throw new Error("Core create handler failed");
+          }
+        }
 
-        setTableData((prev) => {
-          const newData = [...prev];
-          newData[rowIndex] = { ...updatedRow };
-          return newData;
-        });
+        const cleanRowData = { ...TemporaryUpdatedValue };
 
-        // Clear any errors for this row
         setApiErrors((prev) => {
           const newErrors = { ...prev };
           config.columns.forEach((col) => {
@@ -157,41 +180,44 @@ const ConfigurableTable = <TData,>({
           return newErrors;
         });
 
-        // Call success callback
-        if (config.editing?.rowCreating?.onRowCreated && response)
-          config.editing.rowCreating.onRowCreated(updatedRow, response);
+        if (config.editing?.rowCreating?.afterCreate)
+          config.editing.rowCreating.afterCreate({
+            newRow: cleanRowData,
+          });
       } catch (error) {
         console.error("Row creation failed:", error);
 
-        // Set error for the entire row
         setApiErrors((prev) => ({
           ...prev,
           [`${rowIndex}-row`]:
             error instanceof Error ? error.message : "Creation failed",
         }));
 
-        // Call error callback
         if (config.editing?.rowCreating?.onCreateError) {
-          config.editing.rowCreating.onCreateError(error, rowData);
+          config.editing.rowCreating.onCreateError({
+            error,
+            rowData,
+          });
         }
+      } finally {
+        setIsLoading(false);
       }
     },
     [config.editing?.rowCreating, config.columns, checkRowReadyForCreation]
   );
 
-  // Enhanced cell save handler with complex API scenarios
   const handleCellSave = useCallback(
     async (
       rowIndex: number,
       columnId: keyof TData,
-      newValue: string | string[] | number | boolean
+      mutationKey: keyof TData,
+      newValue: MetaCellData
     ) => {
-      const rowData = tableData[rowIndex] as CreatableRow;
+      const rowData = tableData[rowIndex] as TData;
       const oldValue = rowData[columnId] as CellData;
-      const isNewRow = rowData.__isNew ? true : false;
+      const isNewRow = rowData.__isDummy ? true : false;
 
-      // Skip if value hasn't changed
-      if (oldValue === newValue) {
+      if (oldValue === newValue.value) {
         setEditingCell(null);
         return;
       }
@@ -200,85 +226,68 @@ const ConfigurableTable = <TData,>({
       const cellKey = `${rowIndex}-${String(columnId)}`;
 
       try {
-        // Update local state first
         if (isNewRow) {
-          handleAutoSave(rowIndex, rowData);
-
           setTableData((prev) => {
             const newData = [...prev];
-            newData[rowIndex] = { ...newData[rowIndex], [columnId]: newValue };
+            newData[rowIndex] = {
+              ...newData[rowIndex],
+              [columnId]: newValue.value,
+            };
             return newData;
           });
+          handleAutoSave(rowIndex, mutationKey, newValue, rowData);
         } else {
-          // Handle existing row updates (previous logic)
-          // Call custom callback if provided
           if (config.editing?.onCellEdit) {
-            const success = await config.editing.onCellEdit(
+            const success = await config.editing.onCellEdit({
               rowIndex,
               columnId,
               newValue,
               oldValue,
-              rowData
-            );
+              rowData,
+            });
             if (success === false) {
               setIsLoading(false);
               return;
             }
           }
 
-          // Before update hook
           if (config.editing?.columnUpdating?.beforeUpdate) {
             const shouldContinue =
-              await config.editing.columnUpdating.beforeUpdate(
-                rowData,
+              await config.editing.columnUpdating.beforeUpdate({
                 columnId,
-                newValue
-              );
+                newValue,
+                rowData,
+              });
             if (!shouldContinue) {
               setIsLoading(false);
               return;
             }
           }
 
-          // Handle API updates for existing rows (previous complex logic)
           const updateResults: TData[] = [];
 
-          // Custom update handler
           if (config.editing?.columnUpdating?.coreUpdate) {
-            const success = await config.editing.columnUpdating.coreUpdate(
-              rowData,
+            const success = await config.editing.columnUpdating.coreUpdate({
               columnId,
               newValue,
-              oldValue
-            );
+              oldValue,
+              rowData,
+            });
             if (!success) {
-              throw new Error("Custom update handler failed");
+              throw new Error("Core update handler failed");
             }
           }
 
-          // After update hook
           if (config.editing?.columnUpdating?.afterUpdate) {
-            await config.editing.columnUpdating.afterUpdate(
-              rowData,
+            await config.editing.columnUpdating.afterUpdate({
               columnId,
               newValue,
-              updateResults
-            );
+              rowData,
+              response: updateResults,
+            });
           }
-
-          // Update existing row data
-          setTableData((prev) => {
-            const newData = [...prev];
-            const dataIndex = rowIndex;
-            newData[dataIndex] = {
-              ...newData[dataIndex],
-              [columnId]: newValue,
-            };
-            return newData;
-          });
         }
 
-        // Clear any existing error
         setApiErrors((prev) => {
           const newErrors = { ...prev };
           delete newErrors[cellKey];
@@ -289,18 +298,15 @@ const ConfigurableTable = <TData,>({
       } catch (error) {
         console.error("Cell update failed:", error);
 
-        // Set error state
         setApiErrors((prev) => ({
           ...prev,
           [cellKey]: error instanceof Error ? error.message : "Update failed",
         }));
 
-        // Call error callback if provided
         if (config.editing?.onApiError) {
-          config.editing.onApiError(error, {
-            operation: isNewRow ? "createRow" : "updateCell",
-            rowIndex,
-            columnId,
+          config.editing.onApiError({
+            error,
+            context: { operation: "update", rowIndex, columnId },
           });
         }
       } finally {
@@ -315,28 +321,10 @@ const ConfigurableTable = <TData,>({
   }, []);
 
   const handleAddNewRow = useCallback(() => {
-    const defaultValues = config.editing?.rowCreating?.defaultValues || {};
-    const newRow = {
-      __isNew: true,
-      __tempId: `new${Date.now()}`,
-      ...defaultValues,
-      ...config.columns.reduce((acc, col) => {
-        if (!(col.accessorKey in defaultValues)) {
-          acc[col.accessorKey] =
-            col.type === "boolean"
-              ? (false as CreatableRow[keyof TData])
-              : col.type === "multiselect"
-              ? ([] as CreatableRow[keyof TData])
-              : col.type === "number"
-              ? (0 as CreatableRow[keyof TData])
-              : ("" as CreatableRow[keyof TData]);
-        }
-        return acc;
-      }, {} as CreatableRow),
-    };
-
-    setTableData((prev) => [newRow, ...prev]);
-  }, [config.editing?.rowCreating?.defaultValues, config.columns]);
+    if (config.editing?.rowCreating?.addDummyRow) {
+      config.editing.rowCreating.addDummyRow();
+    }
+  }, [config.editing?.rowCreating]);
 
   const onPaginationChange = useCallback(
     (updaterOrValue: Updater<PaginationState>) => {
@@ -410,12 +398,12 @@ const ConfigurableTable = <TData,>({
       if (config.columnVisibility?.onColumnVisibilityChange) {
         config.columnVisibility.onColumnVisibilityChange(newColumnVisibility);
       }
+      console.log(newColumnVisibility);
       setColumnVisibility(newColumnVisibility);
     },
     [columnVisibility, config.columnVisibility]
   );
 
-  // Create columns based on configuration
   const columns = useMemo<ColumnDef<TData>[]>(() => {
     const selectionColumn: ColumnDef<TData> = {
       id: "select",
@@ -427,6 +415,8 @@ const ConfigurableTable = <TData,>({
       header: ({ table }) => (
         <div className="flex justify-center items-center">
           <Checkbox
+            aria-label="Select all"
+            className="-translate-x-1"
             checked={
               table.getIsAllPageRowsSelected() ||
               (table.getIsSomePageRowsSelected() && "indeterminate")
@@ -434,20 +424,36 @@ const ConfigurableTable = <TData,>({
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
-            className="-translate-x-1"
           />
         </div>
       ),
-      cell: ({ row }) => (
-        <div className="flex justify-center items-center">
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const isDummyRow = row.original.__isDummy ?? false;
+        if (isDummyRow)
+          return (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="p-1 h-5 w-5 border border-destructive rounded-full flex items-center justify-center mx-auto"
+              onClick={() => {
+                if (config.editing?.rowCreating?.removeDummyRow)
+                  config.editing.rowCreating.removeDummyRow(row.original.id);
+              }}
+            >
+              <X size={12} className="text-destructive" />
+            </Button>
+          );
+
+        return (
+          <div className="flex justify-center items-center">
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Select row"
+            />
+          </div>
+        );
+      },
     };
 
     const dataColumns: ColumnDef<TData>[] = config.columns.map((colConfig) => ({
@@ -460,44 +466,61 @@ const ConfigurableTable = <TData,>({
       enableHiding:
         (config.columnVisibility?.enabled && colConfig.hideable) || false,
       header: ({ column }) => (
-        <ConfigTableColumnHeader column={column} columnConfig={colConfig} />
+        <ConfigTableColumnHeader
+          column={column}
+          columnConfig={colConfig}
+          className="text-xs font-normal text-accent-foreground"
+        />
       ),
       cell: ({ getValue, row }) => {
+        const isDummyRow = row.original.__isDummy ?? false;
         const value = getValue() as CellData;
         const rowIndex = row.index;
         const isEditing =
           editingCell?.rowIndex === rowIndex &&
-          editingCell?.columnId === colConfig.id;
+          editingCell?.columnId === colConfig.mutationKey;
 
         const cellProps = {
           value,
           isEditing,
           onEdit: config.editing?.enabled
-            ? () => handleCellEdit(rowIndex, colConfig.id)
+            ? () => handleCellEdit(rowIndex, colConfig.mutationKey as string)
             : undefined,
           onSave: config.editing?.enabled
-            ? (newValue: CellData) =>
-                handleCellSave(rowIndex, colConfig.id as keyof TData, newValue)
+            ? (newValue: MetaCellData) =>
+                handleCellSave(
+                  rowIndex,
+                  colConfig.accessorKey as keyof TData,
+                  colConfig.mutationKey as keyof TData,
+                  newValue
+                )
             : undefined,
           onCancel: config.editing?.enabled ? handleCellCancel : undefined,
           columnConfig: colConfig,
         };
 
         switch (colConfig.type) {
+          case "id":
+            return (
+              <TextCell<TData, keyof TData>
+                {...cellProps}
+                value={isDummyRow ? "" : value}
+              />
+            );
           case "text":
             return <TextCell<TData, keyof TData> {...cellProps} />;
           case "number":
             return <NumberCell<TData, keyof TData> {...cellProps} />;
           case "boolean":
             return <BooleanCell<TData, keyof TData> {...cellProps} />;
-          case "select":
+          case "single-select":
             return (
               <SingleSelectCell<TData, keyof TData>
                 {...cellProps}
                 options={colConfig.options || []}
               />
             );
-          case "multiselect":
+          case "multi-select":
             return (
               <MultiSelectCell<TData, keyof TData>
                 {...cellProps}
@@ -506,9 +529,16 @@ const ConfigurableTable = <TData,>({
             );
           case "date":
             return <DateCell {...cellProps} />;
+          case "auto-complete":
+            return <AutoCompleteCell {...cellProps} />;
+          case "icon-buttons":
+            return <CellIconButtons {...cellProps} row={row.original} />;
           default:
             return <TextCell {...cellProps} />;
         }
+      },
+      meta: {
+        label: colConfig.header,
       },
     }));
 
@@ -517,6 +547,7 @@ const ConfigurableTable = <TData,>({
     config.columnVisibility?.enabled,
     config.columns,
     config.editing?.enabled,
+    config.editing?.rowCreating,
     config.filtering?.enabled,
     config.sorting?.enabled,
     editingCell?.columnId,
@@ -530,17 +561,12 @@ const ConfigurableTable = <TData,>({
     data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues(),
     onSortingChange: onColumnSortingChange,
     onColumnFiltersChange: onColumnFiltersChange,
     onColumnVisibilityChange: onColumnVisibilityChange,
     onPaginationChange: onPaginationChange,
     onGlobalFilterChange: setGlobalFilter,
+
     state: {
       sorting,
       columnFilters,
@@ -554,64 +580,7 @@ const ConfigurableTable = <TData,>({
   });
 
   return (
-    <div className="space-y-4">
-      {/* API Status */}
-      {config.editing?.enabled && (
-        <div className="flex items-center justify-between bg-gray-50 border rounded-lg p-3">
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-2 text-gray-700">
-              <span className="text-sm font-medium">
-                Table: {config.tableKey}
-              </span>
-            </div>
-            {isLoading && (
-              <div className="flex items-center space-x-2 text-blue-600">
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Saving...</span>
-              </div>
-            )}
-          </div>
-
-          <Button variant={"outline"} onClick={handleAddNewRow}>
-            <Plus />
-            Add new
-          </Button>
-
-          {Object.keys(apiErrors).length > 0 && (
-            <div className="flex items-center space-x-2 text-red-600">
-              <span className="text-sm font-medium">
-                {Object.keys(apiErrors).length} error(s)
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setApiErrors({})}
-                className="h-6 px-2 text-xs"
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Editing Status */}
-      {config.editing?.enabled && editingCell && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 hidden">
-          <div className="flex items-center space-x-2 text-blue-800">
-            <Edit className="h-4 w-4" />
-            <span className="text-sm font-medium">
-              Editing{" "}
-              {
-                config.columns.find((col) => col.id === editingCell.columnId)
-                  ?.header
-              }
-              in row {editingCell.rowIndex + 1}
-            </span>
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-1">
       {/* Global search */}
       {config.filtering?.enabled && config.filtering?.globalSearch && (
         <div className=" items-center space-x-2 hidden">
@@ -625,11 +594,25 @@ const ConfigurableTable = <TData,>({
       )}
 
       {/* Table */}
-      <div className="rounded-md border">
-        <div className="flex items-center justify-end p-4">
+      <div className="">
+        <div className="flex items-center justify-end py-2 space-x-3">
+          {isLoading && (
+            <div className="flex items-center space-x-2 mr-auto">
+              <span className="text-xs text-muted-foreground font-normal">
+                Saving...
+              </span>
+            </div>
+          )}
           <ConfigTableColumnHider table={table} />
+          {config.editing?.rowCreating?.enabled && (
+            <Button size={"sm"} variant={"outline"} onClick={handleAddNewRow}>
+              <span className="text-xs font-normal">
+                Add {config.tableName ? <>{config.tableName}</> : null}
+              </span>
+            </Button>
+          )}
         </div>
-        <Table>
+        <Table className="border">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -650,7 +633,16 @@ const ConfigurableTable = <TData,>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isFetching ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -684,16 +676,16 @@ const ConfigurableTable = <TData,>({
       {config.pagination?.enabled && (
         <div className="flex items-center justify-between space-x-2 py-4">
           <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Rows per page</p>
+            <p className="text-xs font-normal">Rows per page</p>
             <Select
               value={table.getState().pagination.pageSize.toString()}
               onValueChange={(value) => table.setPageSize(Number(value))}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className="w-16 font-normal text-xs border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {config.pagination.pageSizeOptions.map((pageSize) => (
+                {pageSizeOptions.map((pageSize) => (
                   <SelectItem key={pageSize} value={pageSize.toString()}>
                     {pageSize}
                   </SelectItem>
@@ -703,8 +695,8 @@ const ConfigurableTable = <TData,>({
           </div>
 
           <div className="flex items-center space-x-6 lg:space-x-8">
-            <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">
+            <div className="items-center space-x-2 hidden">
+              <p className="text-xs font-medium">
                 Page {table.getState().pagination.pageIndex + 1} of{" "}
                 {table.getPageCount()}
               </p>
@@ -712,7 +704,7 @@ const ConfigurableTable = <TData,>({
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hidden"
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -726,17 +718,24 @@ const ConfigurableTable = <TData,>({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
+              <p className="text-xs font-normal">
+                Page {table.getState().pagination.pageIndex + 1}
+              </p>
               <Button
                 variant="outline"
                 className="h-8 w-8 p-0"
                 onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                disabled={
+                  table.getRowCount() < table.getState().pagination.pageSize ||
+                  table.getRowCount() === 0
+                }
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
+
               <Button
                 variant="outline"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hidden"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >

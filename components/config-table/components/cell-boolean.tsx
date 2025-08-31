@@ -1,4 +1,4 @@
-import type { ColumnConfig } from "@/components/config-table/types";
+import type { ColumnConfig, MetaCellData } from "@/components/config-table/types";
 import { ConfigTableInlineEditor } from "@/components/config-table/components";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -14,7 +14,7 @@ export const BooleanCell = <TData, TKey extends keyof TData>({
   isEditing?: boolean;
   onEdit?: () => void;
   onSave:
-    | ((newValue: string | string[] | number | boolean) => Promise<void>)
+    | ((newValue: MetaCellData) => Promise<void>)
     | undefined;
   onCancel?: () => void;
   columnConfig?: ColumnConfig<TData, TKey>;

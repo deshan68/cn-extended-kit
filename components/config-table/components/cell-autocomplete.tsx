@@ -1,10 +1,7 @@
-import type {
-  ColumnConfig,
-  MetaCellData,
-} from "@/components/config-table/types";
+import type { ColumnConfig, MetaCellData } from "@/components/config-table/types";
 import { ConfigTableInlineEditor } from "@/components/config-table/components";
 
-export const TextCell = <TData, TKey extends keyof TData>({
+export const AutoCompleteCell = <TData, TKey extends keyof TData>({
   value,
   isEditing,
   onEdit,
@@ -15,7 +12,9 @@ export const TextCell = <TData, TKey extends keyof TData>({
   value: string | string[] | number | boolean;
   isEditing?: boolean;
   onEdit?: () => void;
-  onSave: ((newValue: MetaCellData) => Promise<void>) | undefined;
+  onSave:
+    | ((newValue: MetaCellData) => Promise<void>)
+    | undefined;
   onCancel?: () => void;
   columnConfig?: ColumnConfig<TData, TKey>;
 }) => {
@@ -25,9 +24,10 @@ export const TextCell = <TData, TKey extends keyof TData>({
         value={value}
         onSave={onSave}
         onCancel={onCancel}
-        type="text"
+        type="auto-complete"
         validation={columnConfig?.validation}
         placeholder={columnConfig?.placeholder}
+        asyncOptions={columnConfig?.asyncOptions}
       />
     );
   }

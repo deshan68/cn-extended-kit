@@ -1,5 +1,6 @@
 import type {
   ColumnConfig,
+  MetaCellData,
   SelectOption,
 } from "@/components/config-table/types";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +19,13 @@ import React, { useState } from "react";
 
 interface ConfigTableInlineEditorProps<TData, TKey extends keyof TData> {
   value: string | string[] | number | boolean;
-  onSave:
-    | ((newValue: string | string[] | number | boolean) => Promise<void>)
-    | undefined;
+  onSave: ((newValue: MetaCellData) => Promise<void>) | undefined;
   onCancel: () => void;
   type: ColumnConfig<TData, TKey>["type"];
   options?: SelectOption[];
   validation?: ColumnConfig<TData, TKey>["validation"];
   placeholder?: string;
+  asyncOptions?: ColumnConfig<TData, TKey>["asyncOptions"];
 }
 
 export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
@@ -36,16 +36,23 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
   options,
   validation,
   placeholder,
+  asyncOptions,
 }: ConfigTableInlineEditorProps<TData, TKey>) => {
   const [editValue, setEditValue] = useState(value);
-  const editValueRef = React.useRef(editValue);
+  const editValueRef = React.useRef<MetaCellData>({
+    value: editValue,
+    meta: {},
+  });
   const [error, setError] = useState<string>("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (
       inputRef.current &&
-      (type === "text" || type === "number" || type === "date")
+      (type === "text" ||
+        type === "number" ||
+        type === "date" ||
+        type === "auto-complete")
     ) {
       inputRef.current.focus();
       inputRef.current.select();
@@ -109,6 +116,7 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
     if (!error) {
       handleSave();
     }
+    if (type === "auto-complete") return;
   };
 
   const handleMultiSelectChange = (optionValue: string) => {
@@ -117,7 +125,9 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
       ? currentValues.filter((v) => v !== optionValue)
       : [...currentValues, optionValue];
     setEditValue(newValues);
-    editValueRef.current = newValues;
+    editValueRef.current = {
+      value: newValues,
+    };
     handleSave();
   };
 
@@ -129,11 +139,13 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
             ref={inputRef}
             value={(editValue as string) || ""}
             onChange={(e) => {
-              editValueRef.current = e.target.value;
+              editValueRef.current = {
+                value: e.target.value,
+              };
               setEditValue(e.target.value);
             }}
             placeholder={placeholder}
-            className={`w-full ${error ? "border-red-500" : "border-blue-500"}`}
+            className={`w-full text-xs font-normal ${error ? "border-red-500" : "border-blue-500"}`}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
           />
@@ -149,9 +161,10 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
             type="number"
             value={(editValue as number) || ""}
             onChange={(e) => {
-              editValueRef.current =
-                e.target.value === "" ? "" : Number(e.target.value);
-              setEditValue(editValueRef.current);
+              editValueRef.current = {
+                value: e.target.value === "" ? "" : Number(e.target.value),
+              };
+              setEditValue(e.target.value);
             }}
             placeholder={placeholder}
             className={`w-full ${error ? "border-red-500" : "border-blue-500"}`}
@@ -170,7 +183,9 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
             type="date"
             value={(editValue as string) || ""}
             onChange={(e) => {
-              editValueRef.current = e.target.value;
+              editValueRef.current = {
+                value: e.target.value,
+              };
               setEditValue(e.target.value);
             }}
             className={`w-full ${error ? "border-red-500" : "border-blue-500"}`}
@@ -188,7 +203,9 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
             checked={Boolean(editValue)}
             onCheckedChange={(checked) => {
               setEditValue(checked);
-              editValueRef.current = checked;
+              editValueRef.current = {
+                value: checked,
+              };
             }}
             onBlur={handleBlur}
           />
@@ -200,25 +217,27 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
       return (
         <Select
           value={(editValue as string) || ""}
-          onValueChange={(val) => {
-            setEditValue(val);
-            editValueRef.current = val;
+          onValueChange={(value) => {
+            setEditValue(value);
+            editValueRef.current = {
+              value,
+            };
             handleSave();
           }}
         >
           <SelectTrigger
-            className={`w-full ${error ? "border-red-500" : "border-blue-500"}`}
+            className={`w-full text-xs font-normal ${error ? "border-red-500" : "border-blue-500"}`}
           >
             <SelectValue placeholder="Select...">
               {
-                options?.find((opt) => opt.label === editValue.toString())
+                options?.find((opt) => opt.value === editValue.toString())
                   ?.label
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {options?.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+              <SelectItem key={option.value} value={option.value} className=" text-xs font-normal">
                 {option.label}
               </SelectItem>
             ))}
@@ -226,7 +245,7 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
         </Select>
       );
 
-    case "multiselect": {
+    case "multi-select": {
       const currentValues = Array.isArray(editValue) ? editValue : [];
 
       return (
@@ -263,6 +282,94 @@ export const ConfigTableInlineEditor = <TData, TKey extends keyof TData>({
                 ))}
             </SelectContent>
           </Select>
+        </div>
+      );
+    }
+
+    case "auto-complete": {
+      const [options, setOptions] = React.useState<SelectOption[]>([]);
+      const [loading, setLoading] = React.useState(false);
+
+      const debounce = (fn: Function, delay: number) => {
+        let timer: NodeJS.Timeout;
+        return (...args: any[]) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      };
+
+      const fetchData = React.useCallback(
+        debounce(async (q: string) => {
+          if (!asyncOptions) return;
+          if (
+            asyncOptions.minSearchChars &&
+            q.length < asyncOptions.minSearchChars
+          ) {
+            setOptions([]);
+            return;
+          }
+          setLoading(true);
+          try {
+            const result = await asyncOptions.fetchOptions(q);
+            setOptions(result);
+          } catch (e) {
+            console.error("Autocomplete fetch error", e);
+          } finally {
+            setLoading(false);
+          }
+        }, asyncOptions?.debounceMs ?? 300),
+        [asyncOptions]
+      );
+
+      return (
+        <div className="relative w-full">
+          <Input
+            ref={inputRef}
+            value={(editValue as string) || ""}
+            onChange={(e) => {
+              editValueRef.current = {
+                value: e.target.value,
+                meta: {},
+              };
+              setEditValue(e.target.value);
+              fetchData(e.target.value);
+            }}
+            placeholder={placeholder || "Type to search..."}
+            className={`w-full text-xs ${
+              error ? "border-destructive" : "border-blue-500"
+            }`}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+          />
+          {loading && (
+            <div className="absolute bg-background p-4 text-xs w-full drop-shadow-lg border rounded-sm">
+              Loading...
+            </div>
+          )}
+          {options.length > 0 && (
+            <ul className="absolute bg-background py-1 text-xs w-full drop-shadow-lg border rounded-sm gap-y-1">
+              {options.map((opt) => (
+                <li
+                  key={opt.value}
+                  className="cursor-pointer py-2 px-2 hover:bg-gray-100"
+                  onMouseDown={() => {
+                    setEditValue(opt.label);
+                    editValueRef.current = {
+                      value: opt.label,
+                      meta: opt.meta,
+                    };
+                    setOptions([]);
+                    handleSave();
+                  }}
+                >
+                  {opt.label}
+                </li>
+              ))}
+            </ul>
+          )}
+          {error && (
+            <div className="text-xs text-destructive mt-1">{error}</div>
+          )}
         </div>
       );
     }

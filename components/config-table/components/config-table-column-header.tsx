@@ -29,7 +29,7 @@ export function ConfigTableColumnHeader<TData, TValue>({
   className,
   ...props
 }: ConfigTableColumnHeaderProps<TData, TValue>) {
-  if (!column.getCanSort() && !column.getCanHide()) {
+  if (!column.getCanSort() && !column.getCanHide() && !column.getCanFilter()) {
     return <div className={cn(className)}>{columnConfig.header}</div>;
   }
 
@@ -57,19 +57,19 @@ export function ConfigTableColumnHeader<TData, TValue>({
           {column.getCanSort() && (
             <>
               <DropdownMenuCheckboxItem
-                className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground"
+                className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground text-xs font-normal"
                 checked={column.getIsSorted() === "asc"}
                 onClick={() => column.toggleSorting(false)}
               >
-                <ChevronUp />
+                <ChevronUp className="size-4 mr-4" />
                 Asc
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground"
+                className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground text-xs font-normal"
                 checked={column.getIsSorted() === "desc"}
                 onClick={() => column.toggleSorting(true)}
               >
-                <ChevronDown />
+                <ChevronDown className="size-4 mr-4" />
                 Desc
               </DropdownMenuCheckboxItem>
               {column.getIsSorted() && (
@@ -77,7 +77,7 @@ export function ConfigTableColumnHeader<TData, TValue>({
                   className="pl-2 [&_svg]:text-muted-foreground"
                   onClick={() => column.clearSorting()}
                 >
-                  <X />
+                  <X className="size-4 mr-4" />
                   Reset
                 </DropdownMenuItem>
               )}
@@ -85,11 +85,11 @@ export function ConfigTableColumnHeader<TData, TValue>({
           )}
           {column.getCanHide() && (
             <DropdownMenuCheckboxItem
-              className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground"
+              className="relative pr-8 pl-2 [&>span:first-child]:right-2 [&>span:first-child]:left-auto [&_svg]:text-muted-foreground text-xs font-normal"
               checked={!column.getIsVisible()}
               onClick={() => column.toggleVisibility(false)}
             >
-              <EyeOff />
+              <EyeOff className="size-4 mr-4" />
               Hide
             </DropdownMenuCheckboxItem>
           )}

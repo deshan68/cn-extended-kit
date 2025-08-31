@@ -16,15 +16,15 @@ import {
 } from "@/components/ui/command";
 import type { Column } from "@tanstack/react-table";
 
-type ConfigTableSelectFilterProps<TData, TValue> = {
+type ConfigTableMultiSelectFilterProps<TData, TValue> = {
   filterOptions: Array<{ value: string; label: string }>;
   column: Column<TData, TValue>;
 };
 
-export function ConfigTableSelectFilter<tData, TValue>({
+export function ConfigTableMultiSelectFilter<tData, TValue>({
   column,
   filterOptions,
-}: ConfigTableSelectFilterProps<tData, TValue>) {
+}: ConfigTableMultiSelectFilterProps<tData, TValue>) {
   const [selectedValues, setSelectedValues] = useState<string[]>(
     (column.getFilterValue() as string[]) || []
   );
@@ -69,7 +69,7 @@ export function ConfigTableSelectFilter<tData, TValue>({
           <Button
             variant="outline"
             size="sm"
-            className="relative border-dashed"
+            className="relative border-dashed text-muted-foreground"
           >
             {hasValue && (
               <div
@@ -86,7 +86,7 @@ export function ConfigTableSelectFilter<tData, TValue>({
                 <XCircle className="size-3.5" />
               </div>
             )}
-            <Search />
+            <Search className="size-4" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[12.5rem] p-0" align="start">
@@ -94,7 +94,7 @@ export function ConfigTableSelectFilter<tData, TValue>({
             <CommandInput placeholder="Type..." />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup className="max-h-[18.75rem] overflow-y-auto overflow-x-hidden">
+              <CommandGroup className="max-h-[18.75rem] overflow-y-auto overflow-x-hidden text-xs font-normal">
                 {filterOptions?.map((opt) => (
                   <CommandItem
                     key={opt.value}

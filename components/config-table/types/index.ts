@@ -1,55 +1,109 @@
 import type {
   ColumnFiltersState,
   PaginationState,
+  RowData,
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
+import { LucideProps } from "lucide-react";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    label?: string;
+  }
+}
+
+type LucidIcon = React.ForwardRefExoticComponent<
+  Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
+>;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SelectOption {
   label: string;
   value: string;
+  icon?: LucidIcon;
+  color?: {
+    background: `#${string}`;
+    text: `#${string}`;
+  };
+  meta?: Record<string, string | number>;
 }
 
 export type CellData = string | string[] | number | boolean;
+
+export type MetaCellData = {
+  value: CellData;
+  meta?: Record<string, string | number>;
+};
 
 export interface ColumnConfig<TData, TKey extends keyof TData = keyof TData> {
   id: string;
   header: string;
   accessorKey: TKey;
-  type: "text" | "select" | "multiselect" | "number" | "boolean" | "date";
+  mutationKey: TKey;
+  type:
+    | "id"
+    | "text"
+    | "single-select"
+    | "multi-select"
+    | "number"
+    | "boolean"
+    | "date"
+    | "auto-complete"
+    | "icon-buttons";
+  options?: SelectOption[];
   width?: number;
   sortable?: boolean;
   hideable?: boolean;
+  editable?: boolean;
+  placeholder?: string;
+  asyncOptions?: {
+    fetchOptions: (query: string) => Promise<SelectOption[]>;
+    debounceMs?: number;
+    minSearchChars?: number;
+  };
   filtering?: {
     enabled: boolean;
-    filterType?: "text" | "number" | "select" | "date";
-    filterOptions?: {
-      value: string;
-      label: string;
-    }[];
+    filterOptions?: SelectOption[];
+    filterType?:
+      | "text"
+      | "number"
+      | "single-select"
+      | "multi-select"
+      | "date"
+      | "auto-complete";
+    asyncOptions?: {
+      debounceMs?: number;
+      minSearchChars?: number;
+      fetchOptions: (query: string) => Promise<SelectOption[]>;
+    };
   };
-  editable?: boolean;
-  options?: SelectOption[];
-  placeholder?: string;
   validation?: {
     required?: boolean;
     min?: number;
     max?: number;
     pattern?: string;
   };
+  iconButtons?: {
+    Icon: LucidIcon;
+    tooltip?: string;
+    onClick: (row: TData) => void;
+    disabled?: (row: TData) => boolean;
+  }[];
 }
 
 export interface TableConfig<TData> {
-  tableKey: string;
   columns: ColumnConfig<TData>[];
   data: TData[];
+  tableName?: string;
 
   pagination?: {
     enabled: boolean;
     pageSize: number;
     pageSizeOptions: number[];
-    onPaginationChange?: (pagination: PaginationState) => void;
+    initialState?: PaginationState;
+    onPaginationChange?: (value: PaginationState) => void;
   };
 
   sorting?: {
@@ -61,6 +115,7 @@ export interface TableConfig<TData> {
   filtering?: {
     enabled: boolean;
     globalSearch?: boolean;
+    initialState?: ColumnFiltersState;
     onGlobalFilterChange?: (value: string) => void;
     onColumnFilterChange?: (value: ColumnFiltersState) => void;
   };
@@ -73,7 +128,6 @@ export interface TableConfig<TData> {
 
   editing?: {
     enabled: boolean;
-    idField: keyof TData;
 
     rowCreating?: {
       enabled: boolean;
@@ -81,50 +135,63 @@ export interface TableConfig<TData> {
       defaultValues?: Partial<TData>;
       autoSave?: boolean;
       autoSaveDelay?: number;
-      customCreateHandler?: (newRowData: TData) => Promise<boolean>;
-      onRowCreated?: (newRow: TData, response: any) => void;
-      onCreateError?: (error: any, rowData: TData) => void;
+      addDummyRow?: () => void;
+      removeDummyRow?: (tempId: string) => void;
+
+      beforeCreate?: (params: {
+        newValue: MetaCellData;
+        columnId: keyof TData;
+        newRow: TData;
+      }) => Promise<boolean> | boolean;
+
+      coreCreate?: (params: {
+        newValue: MetaCellData;
+        columnId: keyof TData;
+        newRow: TData;
+      }) => Promise<boolean>;
+      afterCreate?: (params: { newRow: TData }) => void;
+      onCreateError?: (params: { error: any; rowData: TData }) => void;
     };
 
     columnUpdating?: {
-      beforeUpdate?: (
-        rowData: TData,
-        columnId: keyof TData,
-        newValue: any
-      ) => Promise<boolean> | boolean;
+      beforeUpdate?: (params: {
+        newValue: MetaCellData;
+        columnId: keyof TData;
+        rowData: TData;
+      }) => Promise<boolean> | boolean;
 
-      coreUpdate?: (
-        rowData: TData,
-        columnId: keyof TData,
-        newValue: CellData,
-        oldValue: CellData
-      ) => Promise<boolean>;
+      coreUpdate?: (params: {
+        oldValue: CellData;
+        newValue: MetaCellData;
+        columnId: keyof TData;
+        rowData: TData;
+      }) => Promise<boolean>;
 
-      afterUpdate?: (
-        rowData: TData,
-        columnId: keyof TData,
-        newValue: CellData,
-        response: TData[]
-      ) => Promise<void> | void;
+      afterUpdate?: (params: {
+        newValue: MetaCellData;
+        columnId: keyof TData;
+        rowData: TData;
+        response: TData[];
+      }) => Promise<void> | void;
     };
 
-    onCellEdit?: (
-      rowIndex: number,
-      columnId: keyof TData,
-      newValue: any,
-      oldValue: any,
-      rowData: TData
-    ) => Promise<boolean> | boolean;
+    onCellEdit?: (params: {
+      rowIndex: number;
+      oldValue: CellData;
+      newValue: MetaCellData;
+      columnId: keyof TData;
+      rowData: TData;
+    }) => Promise<boolean> | boolean;
 
-    onRowEdit?: (
-      rowIndex: number,
-      newData: TData,
-      oldData: TData
-    ) => Promise<boolean> | boolean;
+    onRowEdit?: (params: {
+      newRow: TData;
+      oldRow: TData;
+      rowIndex: number;
+    }) => Promise<boolean> | boolean;
 
-    onApiError?: (
-      error: any,
-      context: { operation: string; rowIndex: number; columnId?: keyof TData }
-    ) => void;
+    onApiError?: (params: {
+      error: any;
+      context: { operation: string; rowIndex: number; columnId?: keyof TData };
+    }) => void;
   };
 }

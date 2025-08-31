@@ -23,9 +23,16 @@ export function ConfigTableNumberFilter<TData, TValue>({
   const onChangeTextFilter = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setValue(e.target.value);
-      column.setFilterValue(e.target.value);
     },
-    [column]
+    []
+  );
+
+  const onSearch = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      column.setFilterValue(value || undefined);
+    },
+    [column, value]
   );
 
   const onReset = useCallback(
@@ -38,8 +45,8 @@ export function ConfigTableNumberFilter<TData, TValue>({
   );
 
   const hasValue = useMemo(() => {
-    return value !== "";
-  }, [value]);
+    return column.getFilterValue() !== undefined;
+  }, [column]);
 
   return (
     <>
@@ -65,17 +72,27 @@ export function ConfigTableNumberFilter<TData, TValue>({
                 <XCircle className="size-3.5" />
               </div>
             )}
-            <Search />
+            <Search className="size-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2">
+
+        <PopoverContent className="w-56 p-2 flex flex-col min-w-[150px]">
           <Input
-            placeholder="Filter..."
+            placeholder="Type to search..."
             type="number"
             value={value}
             onChange={onChangeTextFilter}
             inputMode="numeric"
+            className="text-xs font-normal placeholder:text-xs placeholder:font-normal"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 ml-auto text-xs font-normal"
+            onClick={onSearch}
+          >
+            Search
+          </Button>
         </PopoverContent>
       </Popover>
     </>

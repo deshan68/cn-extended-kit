@@ -22,10 +22,17 @@ export function ConfigTableTextFilter<TData, TValue>({
 
   const onChangeTextFilter = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      column.setFilterValue(e.target.value || undefined);
       setValue(e.target.value || "");
     },
-    [column]
+    []
+  );
+
+  const onSearch = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      column.setFilterValue(value || undefined);
+    },
+    [column, value]
   );
 
   const onReset = useCallback(
@@ -38,8 +45,8 @@ export function ConfigTableTextFilter<TData, TValue>({
   );
 
   const hasValue = useMemo(() => {
-    return value !== "";
-  }, [value]);
+    return column.getFilterValue() !== undefined;
+  }, [column]);
 
   return (
     <>
@@ -48,7 +55,7 @@ export function ConfigTableTextFilter<TData, TValue>({
           <Button
             variant="outline"
             size="sm"
-            className="relative border-dashed"
+            className="relative border-dashed text-muted-foreground"
           >
             {hasValue && (
               <div
@@ -57,7 +64,6 @@ export function ConfigTableTextFilter<TData, TValue>({
                   onReset(event);
                 }}
                 style={{
-                  all: "unset",
                   position: "absolute",
                   top: "-0.25rem",
                   right: "-0.375rem",
@@ -66,15 +72,24 @@ export function ConfigTableTextFilter<TData, TValue>({
                 <XCircle className="size-3.5" />
               </div>
             )}
-            <Search />
+            <Search className="size-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2">
+        <PopoverContent className="w-56 p-2 flex flex-col min-w-[150px]">
           <Input
-            placeholder="Filter..."
+            placeholder="Type to search..."
             value={value}
             onChange={onChangeTextFilter}
+            className="text-xs font-normal placeholder:text-xs placeholder:font-normal"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 ml-auto text-xs font-normal"
+            onClick={onSearch}
+          >
+            Search
+          </Button>
         </PopoverContent>
       </Popover>
     </>

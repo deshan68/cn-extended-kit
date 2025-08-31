@@ -47,7 +47,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableAPI } from "@/components/config-table/lib";
+import { TableAPI } from "@/components/config-table/lib/constants";
 import {
   ConfigTableInlineEditor,
   ConfigTableColumnHeader,

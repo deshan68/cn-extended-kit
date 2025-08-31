@@ -3,7 +3,7 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import type { TableAPI } from "@/components/config-table/lib";
+import type { TableAPI } from "@/components/config-table/lib/constants";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface SelectOption {

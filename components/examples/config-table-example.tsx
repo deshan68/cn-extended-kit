@@ -1,8 +1,12 @@
-import type { TableConfig } from "@/components/config-table/types";
+import type {
+  SelectOption,
+  TableConfig,
+} from "@/components/config-table/types";
 import ConfigurableTable from "@/components/config-table/components/config-table";
+import { Car, Code, DollarSign, User, WrenchIcon } from "lucide-react";
 
 export interface TestEmployee {
-  id: number;
+  id: string;
   name: string;
   active: boolean;
   join_date: string;
@@ -19,186 +23,142 @@ const TableExample: React.FC<{
 }> = ({ data }) => {
   const newData: TestEmployee[] = data.map((item) => ({
     ...item,
-    skills: ["React"],
+    skills: ["React", "JS"],
   }));
+
+  const mockFetchOptions = async (query: string): Promise<SelectOption[]> => {
+    // Simulate network delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Mock data
+    const mockData = [
+      { value: "apple", label: "Apple" },
+      { value: "banana", label: "Banana" },
+      { value: "cherry", label: "Cherry" },
+      { value: "date", label: "Date" },
+      { value: "elderberry", label: "Elderberry" },
+      { value: "fig", label: "Fig" },
+      { value: "grape", label: "Grape" },
+      { value: "honeydew", label: "Honeydew" },
+    ];
+
+    // Filter results based on query
+    return mockData.filter((item) =>
+      item.label.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
   const tableConfig: TableConfig<TestEmployee> = {
-    tableKey: "test_employee",
     data: newData,
+    tableName: "Employee",
     columns: [
       {
-        id: "name",
-        header: "Name",
-        accessorKey: "name",
-        type: "text",
-        sortable: true,
-        filtering: {
-          enabled: true,
-          filterType: "text",
-        },
-        hideable: true,
-        editable: true,
-        placeholder: "Search names...",
-        width: 60,
-        validation: {
-          required: true,
-        },
+        id: "id",
+        accessorKey: "id",
+        mutationKey: "id",
+        header: "ID",
+        type: "id",
       },
       {
-        id: "email",
-        header: "Email",
-        accessorKey: "email",
+        id: "name",
+        accessorKey: "name",
+        mutationKey: "name",
+        header: "Name",
         type: "text",
-        sortable: true,
         filtering: {
           enabled: true,
-          filterType: "text",
-        },
-        editable: true,
-        hideable: true,
-        placeholder: "Search emails...",
-        width: 60,
-        validation: {
-          required: true,
         },
       },
       {
         id: "department",
-        header: "Department",
         accessorKey: "department",
-        type: "select",
-        options: [
-          { value: "HR", label: "HR" },
-          { value: "Engineering", label: "Engineering" },
-          { value: "Sales", label: "Sales" },
-          { value: "Marketing", label: "Marketing" },
-          { value: "Finance", label: "Finance" },
-          { value: "Support", label: "Support" },
-          { value: "Operations", label: "Operations" },
-        ],
-        sortable: true,
+        mutationKey: "department",
+        header: "Department",
+        type: "single-select",
         filtering: {
           enabled: true,
-          filterType: "select",
+          filterType: "single-select",
           filterOptions: [
-            { value: "HR", label: "HR" },
-            { value: "Engineering", label: "Engineering" },
-            { value: "Sales", label: "Sales" },
-            { value: "Marketing", label: "Marketing" },
-            { value: "Finance", label: "Finance" },
-            { value: "Support", label: "Support" },
+            {
+              label: "HR",
+              value: "HR",
+            },
+            {
+              label: "Engineering",
+              value: "Engineering",
+            },
+            {
+              label: "Sales",
+              value: "Sales",
+            },
+            {
+              label: "Operations",
+              value: "Operations",
+            },
           ],
         },
-        editable: true,
-        hideable: true,
-        placeholder: "Search departments...",
-        width: 60,
+        options: [
+          {
+            label: "HR",
+            value: "HR",
+            icon: User,
+            color: { background: "#E0F7FA", text: "#006064" },
+          },
+          {
+            label: "Engineering",
+            value: "Engineering",
+            icon: Car,
+            color: { background: "#E8F5E9", text: "#1B5E20" },
+          },
+          {
+            label: "Sales",
+            value: "Sales",
+            icon: DollarSign,
+            color: { background: "#FFF3E0", text: "#E65100" },
+          },
+          {
+            label: "Operations",
+            value: "Operations",
+            icon: WrenchIcon,
+            color: { background: "#F3E5F5", text: "#4A148C" },
+          },
+        ],
       },
       {
-        id: "skills",
-        header: "Skills",
+        id: "skill",
         accessorKey: "skills",
-        type: "multiselect",
+        header: "Skills",
+        mutationKey: "skills",
+        type: "multi-select",
+        filtering: {
+          enabled: true,
+          filterType: "auto-complete",
+          asyncOptions: {
+            fetchOptions: mockFetchOptions,
+          },
+        },
         options: [
-          { value: "JavaScript", label: "JavaScript" },
-          { value: "TypeScript", label: "TypeScript" },
-          { value: "React", label: "React" },
-          { value: "Node.js", label: "Node.js" },
-          { value: "Python", label: "Python" },
+          {
+            value: "React",
+            label: "React",
+            color: { background: "#E3F2FD", text: "#0D47A1" },
+            icon: Car,
+          },
+          {
+            value: "JS",
+            label: "JavaScript",
+            color: { background: "#FFF8E1", text: "#FF6F00" },
+            icon: Code,
+          },
         ],
-        sortable: true,
-        filtering: {
-          enabled: true,
-          filterType: "select",
-          filterOptions: [
-            { value: "JavaScript", label: "JavaScript" },
-            { value: "TypeScript", label: "TypeScript" },
-            { value: "React", label: "React" },
-            { value: "Node.js", label: "Node.js" },
-            { value: "Python", label: "Python" },
-          ],
-        },
-        editable: true,
-        hideable: true,
-        placeholder: "Select skills...",
-        width: 100,
-      },
-      {
-        id: "age",
-        header: "Age",
-        accessorKey: "age",
-        type: "number",
-        sortable: true,
-        editable: true,
-        filtering: {
-          enabled: true,
-          filterType: "number",
-        },
-        width: 50,
-        validation: {
-          required: true,
-          min: 18,
-          max: 99,
-        },
-      },
-      {
-        id: "active",
-        header: "Active",
-        accessorKey: "active",
-        type: "boolean",
-        sortable: true,
-        editable: true,
-        width: 100,
-      },
-      {
-        id: "address",
-        header: "Address",
-        accessorKey: "address",
-        type: "text",
-        sortable: true,
-        editable: true,
-        filtering: {
-          enabled: true,
-          filterType: "text",
-        },
-        placeholder: "Enter address...",
-        width: 150,
-        validation: {
-          required: true,
-        },
-      },
-      {
-        id: "performance rating",
-        header: "Rating",
-        accessorKey: "performance_rating",
-        type: "number",
-        sortable: true,
-        editable: true,
-        width: 50,
-        validation: {
-          required: true,
-          min: 1,
-          max: 5,
-        },
-      },
-      {
-        id: "join date",
-        header: "Join Date",
-        accessorKey: "join_date",
-        type: "date",
-        sortable: true,
-        editable: true,
-        filtering: {
-          enabled: true,
-          filterType: "date",
-        },
       },
     ],
     pagination: {
       enabled: true,
       pageSize: 5,
       pageSizeOptions: [5, 10, 20, 50],
-      onPaginationChange: (pagination) => {
-        console.log("From Parent -> Pagination changed:", pagination);
+      onPaginationChange: (value) => {
+        console.log("From Parent -> Pagination changed:", value);
       },
     },
     sorting: {
@@ -230,76 +190,20 @@ const TableExample: React.FC<{
     },
     editing: {
       enabled: true,
-      idField: "id",
       rowCreating: {
         enabled: true,
-        requiredFields: ["name"],
         autoSave: true,
+        requiredFields: ["name"],
         defaultValues: {
           active: true,
           age: 18,
           department: "HR",
         },
       },
-
-      columnUpdating: {
-        beforeUpdate: async (rowData, columnId, newValue) => {
-          console.log("Before update:", { columnId, newValue, rowData });
-
-          return true;
-        },
-
-        coreUpdate: async (rowData, columnId, newValue, oldValue) => {
-          console.log("Core update handler called:", {
-            columnId,
-            newValue,
-            oldValue,
-            rowData,
-          });
-
-          return true;
-        },
-
-        afterUpdate: async (rowData, columnId, newValue, responses) => {
-          console.log("After update completed:", {
-            rowData,
-            columnId,
-            newValue,
-            responses,
-          });
-        },
-      },
-
-      onCellEdit: async (rowIndex, columnId, newValue, oldValue, rowData) => {
-        console.log("Cell edited:", {
-          tableKey: "employees",
-          rowId: rowData.id,
-          rowIndex,
-          columnId,
-          newValue,
-          oldValue,
-          apiEndpoint: `/api/employees/${rowData.id}`,
-          rowData,
-        });
-
-        if (columnId === "age" && newValue < 18) {
-          throw new Error("Age must be at least 18");
-        }
-
-        return true;
-      },
-
-      onApiError: (error, context) => {
-        console.error("API Error:", error, context);
-      },
     },
   };
 
-  return (
-    <div className="container mx-auto py-8 space-y-8">
-      <ConfigurableTable config={tableConfig} />
-    </div>
-  );
+  return <ConfigurableTable config={tableConfig} isFetching={false} />;
 };
 
 export default TableExample;

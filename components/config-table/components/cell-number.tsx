@@ -1,4 +1,7 @@
-import type { ColumnConfig } from "@/components/config-table/types";
+import type {
+  ColumnConfig,
+  MetaCellData,
+} from "@/components/config-table/types";
 import { ConfigTableInlineEditor } from "@/components/config-table/components";
 
 export const NumberCell = <TData, TKey extends keyof TData>({
@@ -12,9 +15,7 @@ export const NumberCell = <TData, TKey extends keyof TData>({
   value: string | string[] | number | boolean;
   isEditing?: boolean;
   onEdit?: () => void;
-  onSave:
-    | ((newValue: string | string[] | number | boolean) => Promise<void>)
-    | undefined;
+  onSave: ((newValue: MetaCellData) => Promise<void>) | undefined;
   onCancel?: () => void;
   columnConfig?: ColumnConfig<TData, TKey>;
 }) => {

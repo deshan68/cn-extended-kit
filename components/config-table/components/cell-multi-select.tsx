@@ -1,5 +1,6 @@
 import type {
   ColumnConfig,
+  MetaCellData,
   SelectOption,
 } from "@/components/config-table/types";
 import { ConfigTableInlineEditor } from "@/components/config-table/components";
@@ -18,9 +19,7 @@ export const MultiSelectCell = <TData, TKey extends keyof TData>({
   options: SelectOption[];
   isEditing?: boolean;
   onEdit?: () => void;
-  onSave:
-    | ((newValue: string | string[] | number | boolean) => Promise<void>)
-    | undefined;
+  onSave: ((newValue: MetaCellData) => Promise<void>) | undefined;
   onCancel?: () => void;
   columnConfig?: ColumnConfig<TData, TKey>;
 }) => {
@@ -30,7 +29,7 @@ export const MultiSelectCell = <TData, TKey extends keyof TData>({
         value={value}
         onSave={onSave}
         onCancel={onCancel}
-        type="multiselect"
+        type="multi-select"
         options={options}
       />
     );
@@ -63,9 +62,19 @@ export const MultiSelectCell = <TData, TKey extends keyof TData>({
       <div className="flex flex-wrap gap-1">
         {value.map((val, index) => {
           const option = options.find((opt) => opt.value === val);
+
           return (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {option?.label || val}
+            <Badge
+              key={index}
+              variant={option ? "secondary" : "outline"}
+              className="text-xs font-normal flex items-center"
+              style={{
+                backgroundColor: option?.color?.background,
+                color: option?.color?.text,
+              }}
+            >
+              {option?.icon && <option.icon className="mr-0.5 h-3 w-3" />}
+              {option?.label || val || "-"}
             </Badge>
           );
         })}

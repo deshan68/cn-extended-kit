@@ -5,7 +5,9 @@ import {
   ConfigTableTextFilter,
   ConfigTableNumberFilter,
   ConfigTableDateFilter,
-  ConfigTableSelectFilter,
+  ConfigTableMultiSelectFilter,
+  ConfigTableSingleSelectFilter,
+  ConfigTableAutocompleteFilter,
 } from "@/components/config-table/components";
 
 type ConfigTableFilterButtonProps<TData, TValue> = {
@@ -25,11 +27,25 @@ export function ConfigTableFilterButton<TData, TValue>({
         return <ConfigTableTextFilter column={column} />;
       case "number":
         return <ConfigTableNumberFilter column={column} />;
-      case "select":
+      case "single-select":
         return (
-          <ConfigTableSelectFilter
+          <ConfigTableSingleSelectFilter
             column={column}
             filterOptions={colConfig?.filtering?.filterOptions || []}
+          />
+        );
+      case "multi-select":
+        return (
+          <ConfigTableMultiSelectFilter
+            column={column}
+            filterOptions={colConfig?.filtering?.filterOptions || []}
+          />
+        );
+      case "auto-complete":
+        return (
+          <ConfigTableAutocompleteFilter
+            column={column}
+            fetchOptions={colConfig?.filtering?.asyncOptions?.fetchOptions}
           />
         );
       case "date":
