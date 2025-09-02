@@ -78,7 +78,6 @@ const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
   const [tableData, setTableData] = useState(config.data);
   const [isLoading, setIsLoading] = useState(false);
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
-  const [globalFilter, setGlobalFilter] = useState("");
   const [editingCell, setEditingCell] = useState<{
     rowIndex: number;
     columnId: string;
@@ -343,16 +342,6 @@ const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
     [config.pagination, pagination]
   );
 
-  const onGlobalFilterChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (config.filtering?.onGlobalFilterChange) {
-        config.filtering.onGlobalFilterChange(e.target.value);
-      }
-      setGlobalFilter(e.target.value);
-    },
-    [config.filtering]
-  );
-
   const onColumnSortingChange = useCallback(
     (updaterOrValue: Updater<SortingState>) => {
       if (typeof updaterOrValue === "function") {
@@ -432,15 +421,15 @@ const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
         if (isDummyRow)
           return (
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
-              className="p-1 h-5 w-5 border border-destructive rounded-full flex items-center justify-center mx-auto"
+              className="flex mx-auto"
               onClick={() => {
                 if (config.editing?.rowCreating?.removeDummyRow)
                   config.editing.rowCreating.removeDummyRow(row.original.id);
               }}
             >
-              <X size={12} className="text-destructive" />
+              <X className="text-destructive border rounded-full border-destructive h-4 w-4" />
             </Button>
           );
 
@@ -565,12 +554,9 @@ const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
     onColumnFiltersChange: onColumnFiltersChange,
     onColumnVisibilityChange: onColumnVisibilityChange,
     onPaginationChange: onPaginationChange,
-    onGlobalFilterChange: setGlobalFilter,
-
     state: {
       sorting,
       columnFilters,
-      globalFilter,
       pagination,
       columnVisibility,
     },
@@ -581,18 +567,6 @@ const ConfigurableTable = <TData extends { id: string; __isDummy?: boolean }>({
 
   return (
     <div className="space-y-1">
-      {/* Global search */}
-      {config.filtering?.enabled && config.filtering?.globalSearch && (
-        <div className=" items-center space-x-2 hidden">
-          <Input
-            placeholder="Search all columns..."
-            value={globalFilter}
-            onChange={onGlobalFilterChange}
-            className="max-w-sm"
-          />
-        </div>
-      )}
-
       {/* Table */}
       <div className="">
         <div className="flex items-center justify-end py-2 space-x-3">

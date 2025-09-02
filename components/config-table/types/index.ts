@@ -100,8 +100,8 @@ export interface TableConfig<TData> {
 
   pagination?: {
     enabled: boolean;
-    pageSize: number;
-    pageSizeOptions: number[];
+    pageSize?: number;
+    pageSizeOptions?: number[];
     initialState?: PaginationState;
     onPaginationChange?: (value: PaginationState) => void;
   };
@@ -114,9 +114,7 @@ export interface TableConfig<TData> {
 
   filtering?: {
     enabled: boolean;
-    globalSearch?: boolean;
     initialState?: ColumnFiltersState;
-    onGlobalFilterChange?: (value: string) => void;
     onColumnFilterChange?: (value: ColumnFiltersState) => void;
   };
 
