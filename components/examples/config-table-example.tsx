@@ -4,6 +4,7 @@ import type {
 } from "@/components/config-table/types";
 import ConfigurableTable from "@/components/config-table/components/config-table";
 import { Car, Code, DollarSign, User, WrenchIcon } from "lucide-react";
+import { useState } from "react";
 
 export interface TestEmployee {
   id: string;
@@ -25,12 +26,11 @@ const TableExample: React.FC<{
     ...item,
     skills: ["React", "JS"],
   }));
+  const [extendedData, setExtendedData] = useState<TestEmployee[]>(newData);
 
   const mockFetchOptions = async (query: string): Promise<SelectOption[]> => {
-    // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    // Mock data
     const mockData = [
       { value: "apple", label: "Apple" },
       { value: "banana", label: "Banana" },
@@ -42,14 +42,13 @@ const TableExample: React.FC<{
       { value: "honeydew", label: "Honeydew" },
     ];
 
-    // Filter results based on query
     return mockData.filter((item) =>
       item.label.toLowerCase().includes(query.toLowerCase())
     );
   };
 
   const tableConfig: TableConfig<TestEmployee> = {
-    data: newData,
+    data: extendedData,
     tableName: "Employee",
     columns: [
       {
@@ -152,11 +151,31 @@ const TableExample: React.FC<{
           },
         ],
       },
+      {
+        id: "active",
+        accessorKey: "active",
+        mutationKey: "active",
+        header: "Active",
+        type: "boolean",
+        width: 60,
+        filtering: {
+          enabled: true,
+          filterType: "multi-select",
+          filterOptions: [
+            {
+              label: "Active",
+              value: "true",
+            },
+            {
+              label: "Inactive",
+              value: "false",
+            },
+          ],
+        },
+      },
     ],
     pagination: {
       enabled: true,
-      pageSize: 5,
-      pageSizeOptions: [5, 10, 20, 50],
       onPaginationChange: (value) => {
         console.log("From Parent -> Pagination changed:", value);
       },
@@ -180,10 +199,6 @@ const TableExample: React.FC<{
     },
     filtering: {
       enabled: true,
-      globalSearch: true,
-      onGlobalFilterChange: (value) => {
-        console.log("From Parent", value);
-      },
       onColumnFilterChange: (value) => {
         console.log("From Parent -> Column filter changed:", value);
       },
@@ -194,6 +209,27 @@ const TableExample: React.FC<{
         enabled: true,
         autoSave: true,
         requiredFields: ["name"],
+        addDummyRow: () => {
+          setExtendedData((prev) => [
+            {
+              id: String(prev.length + 1),
+              name: "",
+              age: 0,
+              department: "HR",
+              skills: [],
+              active: false,
+              address: "",
+              email: "",
+              join_date: new Date().toISOString().split("T")[0],
+              performance_rating: 1,
+              __isDummy: true,
+            },
+            ...prev,
+          ]);
+        },
+        removeDummyRow(tempId) {
+          setExtendedData((prev) => prev.filter((row) => row.id !== tempId));
+        },
         defaultValues: {
           active: true,
           age: 18,
